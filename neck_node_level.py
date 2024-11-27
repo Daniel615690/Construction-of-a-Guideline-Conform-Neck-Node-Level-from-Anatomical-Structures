@@ -548,34 +548,140 @@ class AnatomicalStructure:
 
 
 class LeftAnatomicalStructure(AnatomicalStructure):
+    """
+    Represents anatomical structures located on the left side of the patient.
+
+    This class extends the general functionality of `AnatomicalStructure` by adding methods
+    specific to structures that are located on one side of the body.
+    The methods in this class are meaningful only for structures positioned on the left side
+    of the patient.
+
+    In CT scans, the left side of the patient is represented on the right side of the scan.
+    This class, therefore, models anatomical structures on the patient's left side, which
+    correspond to the right side of the CT scan. The coordinate system is assumed to be oriented
+    from the right side of the patient to the left side of the patient.
+    """
     @classmethod
     def from_dicom(cls, path, label):
+        """
+        Create a `LeftAnatomicalStructure` instance from a DICOM RT-struct file.
+
+        This method initializes a new `LeftAnatomicalStructure` object based on the
+        specified DICOM RT-struct file and the provided label.
+
+        :param path: The file path to the DICOM RT-struct file.
+        :type path: str
+        :param label: The label identifying the anatomical structure within the DICOM RT-struct file.
+        :type label: str
+        :return: A `LeftAnatomicalStructure` instance.
+        :rtype: LeftAnatomicalStructure
+        """
         points, contour_sequence = cls._extract_points_contour_sequence_from_dicom(path, label)
         return LeftAnatomicalStructure(points, contour_sequence)
 
-    # the actual left side of the patient, so the right side in the CT image
     def get_lateral_tip(self, z):
-        # Returns tip with BIGGER x-value, as x-axis goes from right to left side of patient
+        """
+        Retrieve the lateral tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points furthest
+        along the direction of the first principal component (positive and negative directions).
+        This method returns the lateral (outermost) tip. If multiple points qualify as the lateral tip,
+        one is arbitrarily chosen.
+
+        The xy-plane is determined by the specified `z`-coordinate.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The lateral tip of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         return self.get_right_tip(z)
 
     def get_medial_tip(self, z):
-        # Returns tip with SMALLER x-value, as x-axis goes from right to left side of patient
+        """
+        Retrieve the medial tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points furthest
+        along the positive and negative directions of the first principal component.
+        This method returns the medial (innermost) tip. If multiple points qualify as the medial tip,
+        one is arbitrarily chosen.
+
+        The xy-plane is determined by the specified `z`-coordinate.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The medial tip of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         return self.get_left_tip(z)
 
 
 class RightAnatomicalStructure(AnatomicalStructure):
+    """
+    Represents anatomical structures located on the right side of the patient.
+
+    This class extends the general functionality of `AnatomicalStructure` by adding methods
+    specific to structures that are located on one side of the body.
+    The methods in this class are meaningful only for structures positioned on the right side
+    of the patient.
+
+    In CT scans, the right side of the patient is represented on the left side of the scan.
+    This class, therefore, models anatomical structures on the patient's right side, which
+    correspond to the left side of the CT scan. The coordinate system is assumed to be oriented
+    from the right side of the patient to the left side of the patient.
+    """
     @classmethod
     def from_dicom(cls, path, label):
+        """
+        Create a `RightAnatomicalStructure` instance from a DICOM RT-struct file.
+
+        This method initializes a new `RightAnatomicalStructure` object based on the
+        specified DICOM RT-struct file and the provided label.
+
+        :param path: The file path to the DICOM RT-struct file.
+        :type path: str
+        :param label: The label identifying the anatomical structure within the DICOM RT-struct file.
+        :type label: str
+        :return: A `RightAnatomicalStructure` instance.
+        :rtype: RightAnatomicalStructure
+        """
         points, contour_sequence = cls._extract_points_contour_sequence_from_dicom(path, label)
         return RightAnatomicalStructure(points, contour_sequence)
 
-    # the actual right side of the patient, so the left side in the CT image
     def get_lateral_tip(self, z):
-        # Returns tip with SMALLER x-value, as x-axis goes from right to left side of patient
+        """
+        Retrieve the lateral tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points furthest
+        along the direction of the first principal component (positive and negative directions).
+        This method returns the lateral (outermost) tip. If multiple points qualify as the lateral tip,
+        one is arbitrarily chosen.
+
+        The xy-plane is determined by the specified `z`-coordinate.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The lateral tip of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         return self.get_left_tip(z)
 
     def get_medial_tip(self, z):
-        # Returns tip with BIGGER x-value, as x-axis goes from right to left side of patient
+        """
+        Retrieve the medial tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points furthest
+        along the positive and negative directions of the first principal component.
+        This method returns the medial (innermost) tip. If multiple points qualify as the medial tip,
+        one is arbitrarily chosen.
+
+        The xy-plane is determined by the specified `z`-coordinate.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The medial tip of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         return self.get_right_tip(z)
 
 
