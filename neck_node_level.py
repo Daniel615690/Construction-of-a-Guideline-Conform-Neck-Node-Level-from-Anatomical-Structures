@@ -1,3 +1,5 @@
+import typing
+
 from abc import ABC, abstractmethod
 import os
 from pydicom import dcmread
@@ -15,11 +17,28 @@ from add_contour_to_dicom import add_contour
 
 
 class AnatomicalStructure:
+    """
+    A class representing an anatomical structure.
+
+    This class stores the polygonal chains that describes the border of an anatomical structure for each z-value. It
+    provides methods to create an anatomical structure from a DICOM RT-struct and methods to extract specific points on
+    the anatomical structure.
+    """
+
     def __init__(self, points, contour_sequences=None):
+        """
+        Initialize the AnatomicalStructure class.
+
+        :param points: The border of the anatomical structure
+        :type points: np.ndarray[float]
+        :param contour_sequences: A dictionary where each key represents a z-coordinate (float), and the corresponding value is a list of numpy arrays. Each numpy array has a shape (N, 3) and represents a single contour, which is a sequence of 3D points defining the border of a structure. The anatomical structure may consist of multiple disjoint parts, hence each z-coordinate can map to multiple contours (a list of numpy arrays). Contours are directed, meaning consecutive points in each numpy array are connected, forming a closed or open loop.
+        :type contour_sequences: typing.Dict[float, typing.List[np.ndarray[float]]]
+        """
         self._points = np.empty((0, 3))
         self._contour_sequences = {}
 
         if contour_sequences is None:
+            # orient points and create contour_sequences
             points_oriented = []
             for z in np.unique(points[:, 2]):
                 points_in_slice = points[points[:, 2] == z]
@@ -29,6 +48,7 @@ class AnatomicalStructure:
                 self._contour_sequences[z] = [points_in_slice_oriented]
             self._points = np.array(points_oriented)
         else:
+            # orient points in contour_sequences
             points_oriented = []
             for z, contour_sequence in contour_sequences.items():
                 if z not in self._contour_sequences:
@@ -41,6 +61,17 @@ class AnatomicalStructure:
 
     @classmethod
     def _extract_points_contour_sequence_from_dicom(cls, path, label):
+        """
+        Extract the points and contour sequence of an anatomical structure with `label` from the DICOM RT-struct file
+        at `path`.
+
+        :param path: The path to the DICOM RT-struct file.
+        :type path: str
+        :param label: The label of the anatomical structure used in the DICOM RT-struct file.
+        :type label: str
+        :return: The contour sequence.
+        :rtype:  (np.ndarray[float], typing.Dict[float, typing.List[np.ndarray[float]]])
+        """
         points = []
         contour_sequences = {}
 
@@ -62,20 +93,57 @@ class AnatomicalStructure:
 
     @classmethod
     def from_dicom(cls, path, label):
+        """
+        Create an instance of the AnatomicalStructure class from a DICOM RT-struct file.
+
+        :param path: The path to the DICOM RT-struct file.
+        :type path: str
+        :param label: The label of the anatomical structure in the DICOM RT-struct file.
+        :return: An instance of the AnatomicalStructure class.
+        :rtype: AnatomicalStructure
+        """
         points, contour_sequences = cls._extract_points_contour_sequence_from_dicom(path, label)
         return AnatomicalStructure(points, contour_sequences)
 
     @property
     def points(self):
+        """
+        Get the points that define the border of the anatomical structure.
+
+        :return: The points.
+        :rtype: np.ndarray[float]
+        """
         return self._points
 
     def get_points(self, z):
+        """
+        Get the points that define the border of the anatomical structure for a specified z-coordinate.
+
+        :return: The points.
+        :rtype: np.ndarray[float]
+        """
         return self.points[self.points[:, 2] == z]
 
     def has_points(self, z):
+        """
+        Evaluate whether the AnatomicalStructure exists at the specified z-coordinate.
+
+        :param z: The z-coordinate.
+        :type z: float
+        :return: True iff the AnatomicalStructure exists at `z`, otherwise False.
+        :rtype: bool
+        """
         return len(self.get_points(z)) != 0
 
     def _get_indices_and_contour(self, point):
+        """
+        Get the contour that contains `point` and the corresponding indices.
+
+        :param point: The point.
+        :type point: np.ndarray[float]
+        :return: The index of the point in the contour, the index of the contour in self._contour_sequences and the contour that contains the point.
+        :rtype: (int, int, np.ndarray[float])
+        """
         z = point[2]
         for contour_index, contour in enumerate(self.get_contour_sequence(z)):
             index = _find_index(point, contour)
@@ -84,6 +152,23 @@ class AnatomicalStructure:
         return None, None, None
 
     def get_points_between(self, start_point, end_point, orientation=1):
+        """
+        Return the points between `start_point` (inclusively) and `end_point` (exclusively).
+
+        This function returns the points on the border of the anatomical structure with z = `start_points[2]` between
+        `start_point` (inclusively) and `end_point` (exclusively). If `orientation >= 0`, the returned points are the
+        points between `start_point` and `end_point` in mathematical positive orientation, otherwise the returned points
+        are the points between `start_point` and `end_point` in mathematical negative orientation.
+
+        :param start_point: The start point (inclusively).
+        :type start_point: np.ndarray[float]
+        :param end_point: The end point (exclusively).
+        :type end_point: np.ndarray[float]
+        :param orientation: The orientation of the points between `start_point` and `end_point`. `>= 0` for mathematical positive orientation, `< 0` for mathematical negative orientation.
+        :type orientation: int
+        :return: The points between `start_point` (inclusively) and `end_point` (exclusively).
+        :rtype: np.ndarray[float]
+        """
         z = start_point[2]
         if z != end_point[2]:
             return np.empty((0, 3))
@@ -93,9 +178,10 @@ class AnatomicalStructure:
 
         if (start_index is None or start_contour_index is None or end_index is None or end_contour_index is None or
                 start_contour_index != end_contour_index):
+            # point could not be found or start_point and end_point belong to different contours
             return np.empty((0, 3))
 
-        # note that y-axis is inverted
+        # Note: the y-axis is inverted.
         if orientation >= 0:
             points_between = _slice_wrap_around(contour, end_index, start_index + 1)[::-1]
         else:
@@ -104,33 +190,125 @@ class AnatomicalStructure:
         return points_between
 
     def get_contour_sequence(self, z):
+        """
+        Get the polygonal chain that describes the border of the anatomical structure for a specified z-coordinate.
+
+        This function returns a sequence of polygonal chains that describe the border of the anatomical structure for
+        the specified z-coordinate.
+
+        :param z: The z-coordinate.
+        :type z: np.ndarray[float]
+        :return: The contour sequence.
+        :rtype: np.ndarray[float]
+        """
         if not z in self._contour_sequences:
             return None
         return self._contour_sequences[z]
 
     def get_anterior_point(self, z):
-        # Returns the point with the SMALLEST y value, as y-axis is from front to back of patient.
+        """
+        Get the anterior point of the anatomical structure for a specified z-coordinate.
+
+        This function returns the anterior point of the anatomical structure amongst the points with the specified
+        z-value, which is interpreted as the point with the smallest y-value.
+        If more than one point matches this description, only one of these points will be returned (the selection is not
+        specified).
+
+        :param z: The z-coordinate.
+        :type z: np.ndarray[float]
+        :return: The anterior point.
+        :rtype: np.ndarray[float]
+        """
         return self.get_furthest_point_in_xy_direction([0, -1, z])
 
     def get_posterior_point(self, z):
-        # Returns the point with the BIGGEST y value, as y-axis is from front to back of patient.
+        """
+        Get the posterior point of the anatomical structure for a specified z-coordinate.
+
+        This function returns the posterior point of the anatomical structure amongst the points with the specified
+        z-value, which is interpreted as the point with the maximal y-value.
+        If more than one point matches this description, only one of these points will be returned (the selection is not
+        specified).
+
+        :param z: The z-coordinate.
+        :type z: np.ndarray[float]
+        :return: The posterior point.
+        :rtype: np.ndarray[float]
+        """
         return self.get_furthest_point_in_xy_direction([0, 1, z])
 
     def get_rightmost_point(self, z):
-        # In the coordinate system if the DICOM file, x-axis goes to left side of patient
+        """
+        Get the rightmost point of the anatomical structure for a specified z-coordinate.
+
+        This function returns the point of the anatomical structure with the minimal x-value amongst the points with the
+        specified z-value.
+        In a coordinate system that goes from the right to the left side of the patient, this is the
+        rightmost point.
+        If more than one point matches this description, only one of these points will be returned (the selection is not
+        specified).
+
+        :param z: The z-coordinate.
+        :type z: np.ndarray[float]
+        :return: The rightmost point.
+        :rtype: np.ndarray[float]
+        """
         return self.get_furthest_point_in_xy_direction([1, 0, z])
 
     def get_leftmost_point(self, z):
-        # In the coordinate system if the DICOM file, x-axis goes to left side of patient
+        """
+        Get the leftmost point of the anatomical structure for a specified z-coordinate.
+
+        This function returns the point of the anatomical structure with the maximal x-value amongst the points with the
+        specified z-value.
+        In a coordinate system that goes from the right to the left side of the patient, this is the
+        leftmost point.
+        If more than one point matches this description, only one of these points will be returned (the selection is not
+        specified).
+
+        :param z: The z-coordinate.
+        :type z: np.ndarray[float]
+        :return: The leftmost point.
+        :rtype: np.ndarray[float]
+        """
         return self.get_furthest_point_in_xy_direction([-1, 0, z])
 
     def get_furthest_point_in_xy_direction(self, direction):
+        """
+        Get the furthest point of the anatomical structure in a specified direction.
+
+        This function returns the furthest point of the anatomical structure in the specified direction in the xy-plane.
+        The z-value of the xy-plane is specified by the z-value of the specified direction.
+        If more than one point matches this description, only one of these points will be returned (which one is not
+        specified).
+
+        :param direction: The direction to get the furthest point from.
+        :type direction: np.ndarray[float]
+        :return: The furthest point.
+        :rtype: np.ndarray[float]
+        """
         z_value = direction[2]
         points = self.get_points(z_value)
         projections = np.dot(points, direction)
         return points[np.argmax(projections)]
 
     def get_furthest_point_in_xy_directions(self, direction_1, direction_2):
+        """
+        Get the furthest point of the anatomical structure in specified directions.
+
+        This function returns the point on the anatomical structure in the xy-plane, that is furthest in the primary
+        `direction_1` and amongst those points furthest in the secondary `direction_2`. If more than one point matches
+        this description, only one of these points will be returned (which one is not specified).
+        The z-value of the xy-plane is specified by the z-value of the specified directions. If the z-values of the
+        directions do not match, an empty array is returned.
+
+        :param direction_1: The primary direction.
+        :type direction_1: np.ndarray[float]
+        :param direction_2: The secondary direction.
+        :type direction_2: np.ndarray[float]
+        :return: The furthest point in the primary direction `direction_1` and the secondary direction `direction_2`.
+        :rtype: np.ndarray[float]
+        """
         if direction_1[2] != direction_2[2]:
             return np.empty((0, 3))
 
@@ -145,19 +323,64 @@ class AnatomicalStructure:
         return extreme_points_direction_1[np.argmax(projections_direction_2)]
 
     def get_closest_pair_between_structures(self, anatomical_structure, z):
+        """
+        Get the closest points in the xy-plane between this anatomical structure and the specified anatomical structure.
+
+        :param anatomical_structure: The anatomical structure.
+        :type anatomical_structure: AnatomicalStructure
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The point on this anatomical structure and the point on the specified anatomical structure with the least distance.
+        :rtype: (np.ndarray[float], np.ndarray[float])
+        """
         min_point_self, min_point_other, distance = closest_between_points(
             self.get_points(z), anatomical_structure.get_points(z))
         return min_point_self, min_point_other
 
     def get_closest_point_to_structure(self, anatomical_structure, z):
+        """
+        Get the closest point in the xy-plane on this anatomical structure to the specified anatomical structure.
+
+        :param anatomical_structure: The anatomical structure.
+        :type anatomical_structure: AnatomicalStructure
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The point on this anatomical structure with the least distance to the specified anatomical structure.
+        :rtype: np.ndarray[float]
+        """
         min_point_self, min_point_other = self.get_closest_pair_between_structures(anatomical_structure, z)
         return min_point_self
 
     def get_closest_point_to_point(self, point, z):
+        """
+        Get the closest point in the xy-plane on this anatomical structure to the specified point.
+
+        :param point: The point.
+        :type point: np.ndarray[float]
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The point on this anatomical structure with the least distance to the specified point.
+        :rtype: np.ndarray[float]
+        """
         closest_point, distance = closest_to_point(self.get_points(z), point)
         return closest_point
 
     def get_first_intersection_with_line(self, start, direction):
+        """
+        Get the intersection of this anatomical structure with a line.
+
+        This function determines the edge on the border of the anatomical structure that intersects with the line
+        that starts in `start` and has the specified direction in the xy-plane. It then returns the point of the edge
+        that is closest to `start`.
+        The xy-plane is determined by the z-value of `direction`.
+
+        :param start: The starting point of the line.
+        :type start: np.ndarray[float]
+        :param direction: The direction of the line.
+        :type direction: np.ndarray[float]
+        :return: The intersection point of the line with this anatomical structure.
+        :rtype: np.ndarray[float]
+        """
         z = start[2]
         if z != direction[2] or not self.has_points(z):
             return None
@@ -177,21 +400,59 @@ class AnatomicalStructure:
         return np.empty((0, 3))
 
     def get_caudal_point(self):
-        # Returns the point with the smallest z-value, as z-axis goes from foot to head of patient.
+        """
+        Get the caudal point of this anatomical structure.
+
+        This function returns the caudal point of this anatomical structure, where the caudal point is interpreted as
+        the point with minimal z-value.
+
+        :return: The caudal point of this anatomical structure.
+        :rtype: np.ndarray[float]
+        """
         return self.points[np.argmin(self.points[:, 2])]
 
     def get_cranial_point(self):
-        # Returns the point with the biggest z-value, as z-axis goes from foot to head of patient.
+        """
+        Get the cranial point of this anatomical structure.
+
+        This function returns the cranial point of this anatomical structure, where the cranial point is interpreted as
+        the point with maximal z-value.
+
+        :return: The cranial point of this anatomical structure.
+        :rtype: np.ndarray[float]
+        """
         return self.points[np.argmax(self.points[:, 2])]
 
     def get_principal_component(self, z):
+        """
+        Get the first principal component of this anatomical structure in the xy-plane.
+
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        """
         pca = PCA(n_components=1)
         pca.fit(self.get_points(z))
         first_principal_component = pca.components_[0]
+        # z-value is subject to numerical imprecision
         first_principal_component[2] = z
         return first_principal_component
 
     def get_tips(self, z):
+        """
+        Get the tips of this anatomical structure in the xy-plane.
+
+        This function returns the point of this anatomical structure in the xy-plane that is furthest in the direction
+        of the first principal component and the point of that is furthest in the negative direction of the first
+        principal component.
+        If more than one point matches this description, only one point is selected for each direction (which one is
+        not specified).
+        The xy-plane is determined by the z-value of `direction`.
+
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The tips of this anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         points = self.get_points(z)
 
         pca = PCA(n_components=1)
@@ -203,26 +464,86 @@ class AnatomicalStructure:
         return tip_1, tip_2
 
     def get_anterior_tip(self, z):
-        # Returns tip sith SMALLER y value, as y-axis is from front to back of patient.
+        """
+        Get the anterior tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points that are furthest in the
+        direction of the first principal component and the point of that is furthest in the negative direction of the
+        first principal component. This function returns the tip with bigger y-value. If more than one point matches
+        this description, only one point is returned (which one is not specified).
+        The xy-plane is determined by the z-value of `direction`.
+
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The anterior tip of this anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         tip_1, tip_2 = self.get_tips(z)
         return tip_1 if tip_1[1] < tip_2[1] else tip_2
 
     def get_posterior_tip(self, z):
-        # Returns tip sith BIGGER y value, as y-axis is from front to back of patient.
+        """
+        Get the posterior tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points that are furthest in the
+        direction of the first principal component and the point of that is furthest in the negative direction of the
+        first principal component. This function returns the tip with smaller y-value. If more than one point matches
+        this description, only one point is returned (which one is not specified).
+        The xy-plane is determined by the z-value of `direction`.
+
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The posterior tip of this anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         tip_1, tip_2 = self.get_tips(z)
         return tip_1 if tip_1[1] > tip_2[1] else tip_2
 
     def get_left_tip(self, z):
-        # Returns tip with smaller x value, x-axis goes from right side to left side of patient
+        """
+        Get the left tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points that are furthest in the
+        direction of the first principal component and the point of that is furthest in the negative direction of the
+        first principal component. This function returns the tip with smaller x-value. If more than one point matches
+        this description, only one point is returned (which one is not specified).
+        The xy-plane is determined by the z-value of `direction`.
+
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The left tip of this anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         tip_1, tip_2 = self.get_tips(z)
         return tip_1 if tip_1[0] < tip_2[0] else tip_2
 
     def get_right_tip(self, z):
-        # Returns tip with bigger x value, x-axis goes from right side to left side of patient
+        """
+        Get the right tip of this anatomical structure in the xy-plane.
+
+        The tips of this anatomical structure in the xy-plane are defined as the points that are furthest in the
+        direction of the first principal component and the point of that is furthest in the negative direction of the
+        first principal component. This function returns the tip with bigger x-value. If more than one point matches
+        this description, only one point is returned (which one is not specified).
+        The xy-plane is determined by the z-value of `direction`.
+
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The right tip of this anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         tip_1, tip_2 = self.get_tips(z)
         return tip_1 if tip_1[0] > tip_2[0] else tip_2
 
     def get_mean_point(self, z):
+        """
+        Get the mean point of this anatomical structure in the xy-plane.
+
+        :param z: The z-coordinate of the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The mean point of this anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
         return np.mean(self.get_points(z), axis=0)
 
 
