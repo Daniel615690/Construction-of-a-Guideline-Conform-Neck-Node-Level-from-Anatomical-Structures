@@ -610,8 +610,12 @@ class LeftAnatomicalStructure(AnatomicalStructure):
 
     In CT scans, the left side of the patient is represented on the right side of the scan.
     This class, therefore, models anatomical structures on the patient's left side, which
-    correspond to the right side of the CT scan. The coordinate system is assumed to be oriented
-    from the right side of the patient to the left side of the patient.
+    correspond to the right side of the CT scan.
+
+    The DICOM coordinate system convention is followed in this class:
+    - The x-axis extends from the patient's right (-x) to left (+x).
+    - The y-axis extends from the patient's anterior (front, +y) to posterior (back, -y).
+    - The z-axis extends from inferior (towards feet, -z) to superior (towards head, +z).
     """
     @classmethod
     def from_dicom(cls, path, label):
@@ -637,8 +641,8 @@ class LeftAnatomicalStructure(AnatomicalStructure):
 
         The tips of this anatomical structure in the xy-plane are defined as the points furthest
         along the direction of the first principal component (positive and negative directions).
-        This method returns the lateral (outermost) tip. If multiple points qualify as the lateral tip,
-        one is arbitrarily chosen.
+        This method returns the lateral tip, which is the tip with larger x-value.
+        If multiple points qualify as the lateral tip, one is arbitrarily chosen.
 
         The xy-plane is determined by the specified `z`-coordinate.
 
@@ -655,8 +659,8 @@ class LeftAnatomicalStructure(AnatomicalStructure):
 
         The tips of this anatomical structure in the xy-plane are defined as the points furthest
         along the positive and negative directions of the first principal component.
-        This method returns the medial (innermost) tip. If multiple points qualify as the medial tip,
-        one is arbitrarily chosen.
+        This method returns the medial tip, which is the tip with smaller x-value.
+        If multiple points qualify as the medial tip, one is arbitrarily chosen.
 
         The xy-plane is determined by the specified `z`-coordinate.
 
@@ -679,8 +683,12 @@ class RightAnatomicalStructure(AnatomicalStructure):
 
     In CT scans, the right side of the patient is represented on the left side of the scan.
     This class, therefore, models anatomical structures on the patient's right side, which
-    correspond to the left side of the CT scan. The coordinate system is assumed to be oriented
-    from the right side of the patient to the left side of the patient.
+    correspond to the left side of the CT scan.
+
+    The DICOM coordinate system convention is followed in this class:
+    - The x-axis extends from the patient's right (-x) to left (+x).
+    - The y-axis extends from the patient's anterior (front, +y) to posterior (back, -y).
+    - The z-axis extends from inferior (towards feet, -z) to superior (towards head, +z).
     """
     @classmethod
     def from_dicom(cls, path, label):
@@ -706,8 +714,8 @@ class RightAnatomicalStructure(AnatomicalStructure):
 
         The tips of this anatomical structure in the xy-plane are defined as the points furthest
         along the direction of the first principal component (positive and negative directions).
-        This method returns the lateral (outermost) tip. If multiple points qualify as the lateral tip,
-        one is arbitrarily chosen.
+        This method returns the lateral tip, which is the tip with smaller x-value.
+        If multiple points qualify as the lateral tip, one is arbitrarily chosen.
 
         The xy-plane is determined by the specified `z`-coordinate.
 
@@ -724,8 +732,8 @@ class RightAnatomicalStructure(AnatomicalStructure):
 
         The tips of this anatomical structure in the xy-plane are defined as the points furthest
         along the positive and negative directions of the first principal component.
-        This method returns the medial (innermost) tip. If multiple points qualify as the medial tip,
-        one is arbitrarily chosen.
+        This method returns the medial tip, which is the tip with larger x-value.
+        If multiple points qualify as the medial tip, one is arbitrarily chosen.
 
         The xy-plane is determined by the specified `z`-coordinate.
 
