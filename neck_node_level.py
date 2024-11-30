@@ -973,6 +973,7 @@ class NeckNodeLevel(ABC):
         :type marker_points: str
         :param slices: The z-value of the slices that are to be plotted. If not set, all slices of this neck node level
             will be plotted.
+        :type slices: np.ndarray[float]
         :param full_screen: Whether to show the plot in fullstreen.
         :type full_screen: bool
         :return: This `NeckNodeLevel` instance.
