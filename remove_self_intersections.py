@@ -6,7 +6,16 @@ from interpolation import _close_contour
 
 
 def _find_intersection(p_0, p_1, p_2, p_3):
-    """ Finds intersection between (p_0, p_1) and (p_2, p_3) that are not one of p_0, p_1, p_2 or p_3. """
+    """
+    Finds intersection between (p_0, p_1) and (p_2, p_3) that are not one of p_0, p_1, p_2 or p_3.
+
+    :type p_0: np.ndarray
+    :type p_1: np.ndarray
+    :type p_2: np.ndarray
+    :type p_3: np.ndarray
+    :return: The intersection between (p_0, p_1) and (p_2, p_3) that are not one of p_0, p_1, p_2 or p_3.
+    :rtype: np.ndarray
+    """
     # solve the equation p_0 + s(p_1 - p_0) = p_2 + t(p_3 - p_2) for s, t
     a = np.array([p_1 - p_0, p_2 - p_3]).T
     b = p_2 - p_0
@@ -23,12 +32,16 @@ def _find_intersecting_edge(polygon, edge_start, edge_end, start_index):
     Finds an edge intersecting with ('edge_start', 'edge_end') in 'polygon', starting at index 'start_index'.
 
     Points that are part of 'polygon' are not considered to be intersections.
-    :param list[np.ndarray] polygon: 3D points that form a polygon
-    :param np.ndarray edge_start: the 3D start point of the edge that an intersection is searched for
-    :param np.ndarray edge_end: the 3D end point of the edge that an intersection is searched for
-    :param int start_index: the index in 'polygon' at which the search starts
-    :return: the intersection as 3D np.ndarray and the start index of the edge intersecting with
-    ('edge_start', 'edge_end') as int
+
+    :param polygon: 3D points that form a polygon.
+    type polygon: list[np.ndarray]
+    :param edge_start: The 3D start point of the edge that an intersection is searched for.
+    :type edge_start: np.ndarray
+    :param edge_end: The 3D end point of the edge that an intersection is searched for
+    :type edge_end: np.ndarray
+    :param int start_index: The index in 'polygon' at which the search starts.
+    :return: The intersection and the start index of the edge intersecting with ('edge_start', 'edge_end').
+    :rtype: (np.ndarray, int)
     """
     for i in range(start_index, len(polygon) - 1):
         intersection = _find_intersection(edge_start, edge_end, polygon[i], polygon[i + 1])
@@ -43,8 +56,11 @@ def _resolve_intersections(polygon):
 
     The polygon is divided at intersection points. Points that are part of 'polygon' are not considered to be
     intersections.
-    :param list[np.ndarray]polygon: a list of 3D points that form the polygon
-    :return: a list[list[np.ndarray]] of polygons without self-intersections
+
+    :param polygon: A list of 3D points that form the polygon.
+    :type polygon: list[np.ndarray]
+    :return: The polygons without self-intersection.
+    :rtype: list[list[np.ndarray]]
     """
     polygons_without_intersections = []
     i = 0
@@ -70,8 +86,11 @@ def _clip_polygon(polygon):
 
     The polygon is divided at intersection points. The polygon with the highest number of points remains. Points that
     are part of 'polygon' are not considered intersections.
-    :param list[np.ndarray] polygon: a list of 3D points that form the polygon
-    :return: list[np.ndarray] of 3D points that form the polygon without intersections
+
+    :param polygon: The 3D points that form the polygon.
+    :type polygon: list[np.ndarray]
+    :return: The 3D points that form the polygon without intersections.
+    :rtype: list[np.ndarray]
     """
     polygons_without_intersections = _resolve_intersections(polygon)
     largest_polygon_index = np.argmax([len(polygon) for polygon in polygons_without_intersections])
@@ -84,8 +103,11 @@ def clip_contour(contour):
 
     For each slice, the contour is divided at intersections. The contour with the highest number of points is retained.
     Contour points are not considered intersections.
-    :param np.ndarray contour: an array of 3D points that form the contour
-    :return: 3D np.ndarray of 3D points that form the contour without intersections
+
+    :param contour: The 3D points that form the contour.
+    :type contour: np.ndarray
+    :return: The 3D points that form the contour without intersections.
+    :rtype: np.ndarray
     """
     clipped_contour = []
     for z in np.unique(contour[:, 2]):
@@ -96,6 +118,14 @@ def clip_contour(contour):
 
 
 def get_all_labels(path):
+    """
+    Return the labels of all structures defined in the DICOM file at the specified path.
+
+    :param path: The path to the RT-struct of the DICOM file.
+    :type path: str
+    :return: The labels of all structures defined in the DICOM file.
+    :rtype: set[str]
+    """
     ds = dcmread(path)
 
     labels = set()
@@ -108,6 +138,51 @@ def plot_contour(*contours, path, caudal_boundary, cranial_boundary, slice_thick
                  plot_anatomical_structures=True, anatomical_structures=None, fixed_view=False,
                  marker_anatomical_structures='o', marker_contour='x', marker_points='v', slices=None,
                  full_screen=True, contours_labels=None, grid=True, order=-1, print_boundaries=False):
+    """
+    Plot the contours of a neck node level.
+
+    :param contours: The contours as an array of polygonal chains.
+    :type contours: list[np.ndarray]
+    :param path: The path to the RT-struct of the DICOM file associated with the contours.
+    :type path: str
+    :param caudal_boundary: The z-value of the caudal boundary (exclusively) of this neck node level in mm.
+    :type caudal_boundary: np.ndarray
+    :param cranial_boundary: The z-value of the cranial boundary (exclusively) of this neck node level in mm.
+    :type cranial_boundary: np.ndarray
+    :param slice_thickness: The distance between each axial slice.
+    :type slice_thickness: float
+    :param points: Points that shall be plotted in addition to this neck node level.
+    :type points: np.ndarray
+    :param plot_anatomical_structures: Whether to plot anatomical structures.
+    :type plot_anatomical_structures: bool
+    :param anatomical_structures: The labels in the DICOM file of the anatomical structures that are to be plotted.
+        If not set, the thyroid gland, trachea, left common carotid artery, left internal jugular vein, left
+        anterior scalene muscle, left middle scalene muscle, left sternocleidomastoid muscle and left sternothyroid
+        muscle are plotted.
+    :type anatomical_structures: list[str]
+    :param fixed_view: Whether the window of the plot shall be fixed between slices.
+    :type fixed_view: bool
+    :param marker_anatomical_structures: The marker used to plot the anatomical structures.
+    :type marker_anatomical_structures: str
+    :param marker_contour: marker_contour: The marker used to plot this neck node level.
+    :type marker_contour: str
+    :param marker_points: The marker used to plot `points`.
+    :type marker_points: str
+    :param slices: The z-value of the slices that are to be plotted. If not set, all slices of this neck node level
+        will be plotted.
+    :type slices: np.ndarray[float]
+    :param full_screen: Whether to show the plot in fullstreen.
+    :type full_screen: bool
+    :param contours_labels: The name of each contour in the plot.
+    :type contours_labels: list[str]
+    :param grid: Whether to show the plot grid.
+    :type grid: bool
+    :param order: The order in which the slices are plotted. -1 for plotting from `cranial_boundary` to
+        `caudal_boundary`. 1 for plotting from `caudal_boundary` to `cranial_boundary`.
+    :type order: int
+    :param print_boundaries: Whether to plot the cranial and caudal boundaries.
+    :type print_boundaries: bool
+    """
     if anatomical_structures is None:
         anatomical_structures = {'GLAND_THYROID': 'Thyroid Gland',
                                  'TRACHEA': 'Trachea',
