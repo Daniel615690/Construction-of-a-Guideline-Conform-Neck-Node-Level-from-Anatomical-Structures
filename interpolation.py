@@ -795,6 +795,19 @@ def interpolate_contour_in_xy(contour, corners=None, radius=2, num_interpolation
 
 
 def extract_structure_endpoints(contour, dcm_path):
+    """
+    Extract endpoints of anatomical structures in the contour for each axial slice.
+
+    The contour is represented as a closed polygonal chain in each axial slice. This function identifies the first
+    and last points on the contour that lie on each anatomical structure defined in a DICOM file within the slice.
+
+    :param contour: The contour to extract the points from.
+    :type contour: np.ndarray
+    :param dcm_path: The path to the RT-struct of the DICOM file.
+    :type dcm_path: str
+    :return: The endpoints of the anatomical structures.
+    :rtype: np.ndarray
+    """
     corners = []
     for z in np.unique(contour[:, 2]):
         contour_slice = contour[contour[:, 2] == z]
