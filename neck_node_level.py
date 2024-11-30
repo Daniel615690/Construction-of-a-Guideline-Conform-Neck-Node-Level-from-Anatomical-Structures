@@ -746,7 +746,35 @@ class RightAnatomicalStructure(AnatomicalStructure):
 
 
 class NeckNodeLevel(ABC):
+    """
+    Base class for a neck node level.
+
+    This class provides methods to generale an initial neck node level, process plot and the neck node level.
+    """
+
     def __init__(self, path, oar, caudal_boundary, cranial_boundary, slice_thickness, relevant_structures):
+        """
+        Initialize an `NeckNodeLevel` object.
+
+        For each axial slice, the neck node level is defined by its boundary , which is a closed polygonal chain.
+        Each Neck Node Level is associated with an CT-scan in DICOM format.
+
+        :param path: The path to the RT-struct of the DICOM file.
+        :type path: str
+        :param oar: The labels in the DICOM file of the organs at risk. The neck node level should not cut these organs.
+        :type oar: list[str]
+        :param caudal_boundary: The z-value of the caudal boundary (exclusively) of this neck node level in mm.
+        :type caudal_boundary: float
+        :param cranial_boundary: The z-value of the cranial boundary (exclusively) of this neck node level in mm.
+        :type cranial_boundary: float
+        :param slice_thickness: The distance between each axial slice.
+        :type slice_thickness: float
+        :param relevant_structures: The labels in the DICOM file of the organs that must exist in every slice
+            between `caudal_boundary` and `cranial_boundary` (both exclusively) to generate the neck node level.
+        :type relevant_structures: list[str]
+        :return: The initialized `NeckNodeLevel` object.
+        :rtype: NeckNodeLevel
+        """
         self._path = path
         self._oar = oar
         self._caudal_boundary = caudal_boundary
@@ -756,6 +784,14 @@ class NeckNodeLevel(ABC):
         self._contour = None
 
     def _check_relevant_structures_exist(self):
+        """
+        Check if all structures in `_relevant_structures` exist on every slice between `_caudal_boundary`
+        and `_cranial_boundary` (both exclusively).
+
+        :return: `True` iff all structures in `_relevant_structures` exist on every slice between `_caudal_boundary`
+            and `_cranial_boundary` (both exclusively), otherwise `False`.
+        :rtype: bool
+        """
         for z in np.arange(self._caudal_boundary + self._slice_thickness, self._cranial_boundary,
                            self._slice_thickness):
             for structure in self._relevant_structures:
@@ -765,11 +801,23 @@ class NeckNodeLevel(ABC):
 
     @property
     def contour(self):
+        """
+        Retrieve the boundary of this neck node level.
+
+        :return: The boundary of the neck node level.
+        :rtype: np.ndarray[float]
+        """
         if self._contour is None:
             self._initialize_contour()
         return self._contour
 
     def remove_self_intersections(self):
+        """
+        Remove intersections of the boundary of this neck node level with itself.
+
+        :return: This `NeckNodeLevel` instance.
+        :rtype: NeckNodeLevel
+        """
         if self.contour.size == 0:
             return self
 
@@ -777,6 +825,18 @@ class NeckNodeLevel(ABC):
         return self
 
     def interpolate_in_z(self, point_distance=2):
+        """
+        Smooth the neck node level in the z-direction by averaging boundaries across slices.
+
+        This method reduces variation in the boundary contours between axial slices by replacing the
+        boundary of every second slice with an averaged boundary derived from its neighboring slices.
+        New points are placed along the boundary at the specified distance.
+
+        :param point_distance: The distance (in mm) between interpolated points along the boundary.
+        :type point_distance: float
+        :return: The current `NeckNodeLevel` instance with smoothed boundaries.
+        :rtype: NeckNodeLevel
+        """
         if self.contour.size == 0:
             return self
 
@@ -784,6 +844,24 @@ class NeckNodeLevel(ABC):
         return self
 
     def interpolate_in_xy(self, corners=None, radius=2, num_interpolation_points=10):
+        """
+        Smooth the neck node level boundary in each xy-plane.
+
+        This method refines the boundary of the neck node level for each 2D axial slice by smoothing specific
+        regions around specified points (`corners`). For each corner point, a circle with the given radius
+        is drawn. Boundary points inside the circle are used as control points to define a curve in Bézier form.
+        These control points are replaced with `num_interpolation_points` equally spaced points along the curve
+        in Bézier form, creating a smoother boundary.
+
+        :param corners: Points on the boundary to be smoothed. Each point must belong to the boundary.
+        :type corners: np.ndarray[float]
+        :param radius: The radius (in mm) of the circle used to select points for smoothing.
+        :type radius: float
+        :param num_interpolation_points: The number of equally spaced points used to interpolate the curve in Bézier form.
+        :type num_interpolation_points: int
+        :return: The current `NeckNodeLevel` instance with smoothed boundaries.
+        :rtype: NeckNodeLevel
+        """
         if self.contour.size == 0:
             return self
 
@@ -791,12 +869,39 @@ class NeckNodeLevel(ABC):
         return self
 
     def extract_structure_endpoints(self):
+        """
+        Extract endpoints of anatomical structures in the neck node level for each axial slice.
+
+        The neck node level is represented as a closed polygonal chain in each axial slice. This method identifies
+        the first and last points on the boundary of the neck node level that lie on each anatomical structure
+        within the slice.
+
+        :return: An array containing the endpoints of the anatomical structures.
+        :rtype: np.ndarray[float]
+        """
         if self.contour.size == 0:
             return np.empty((0, 3))
 
         return extract_structure_endpoints(self.contour, self._path)
 
     def clip_corners(self, corners=None, radius=2, angle=np.pi / 2):
+        """
+        Clip the corners of a 3D contour that have an angle smaller than specified.
+
+        The neck node level is represented as a closed polygonal chain in each axial slice. For each point in `corners`
+        this method checks if the angle formed ar that point is smaller than the specified angle. If so, it removes the
+        portion of the polygonal chain within a circle of the given radius centered ar the corner, and replaces it with
+        the circle's intersection points with the contour.
+
+        :param corners: The points to consider for clipping, as a 2D array of points.
+        :type corners: np.ndarray
+        :param radius: The radius of the circle used for clipping.
+        :type radius: float
+        :param angle: The threshold angle in radians. Points in `corners` with angles smaller than this will be clipped.
+        :type angle: float
+        :return: The current `NeckNodeLevel` instance with smoothed boundaries.
+        :rtype: NeckNodeLevel
+        """
         if self.contour.size == 0:
             return self
 
@@ -809,7 +914,12 @@ class NeckNodeLevel(ABC):
         return self
 
     def remove_intersections(self):
-        """ Removes self-intersections and intersections with the anatomical structures self.spared_structures. """
+        """
+        Remove intersections of the boundary of this neck node level with itself and anatomical structures.
+
+        :return: This `NeckNodeLevel` instance.
+        :rtype: NeckNodeLevel
+        """
         if self.contour.size == 0:
             return self
 
@@ -839,6 +949,35 @@ class NeckNodeLevel(ABC):
 
     def plot(self, points=None, plot_anatomical_structures=True, anatomical_structures=None, fixed_view=False,
              marker_anatomical_structures='o', marker_contour='x', marker_points='v', slices=None, full_screen=True):
+        """
+        Plot this neck node level.
+
+        This method plots this neck node level for each 2D axial slice.
+
+        :param points: Points that shall be plotted in addition to this neck node level.
+        :type points: np.ndarray[float]
+        :param plot_anatomical_structures: Whether to plot anatomical structures.
+        :type plot_anatomical_structures: bool
+        :param anatomical_structures: The labels in the DICOM file of the anatomical structures that are to be plotted.
+            If not set, the thyroid gland, trachea, left common carotid artery, left internal jugular vein, left
+            anterior scalene muscle, left middle scalene muscle, left sternocleidomastoid muscle and left sternothyroid
+            muscle are plotted.
+        :type anatomical_structures: dict[str, str]
+        :param fixed_view: Whether the window of the plot shall be fixed between slices.
+        :type fixed_view: bool
+        :param marker_anatomical_structures: The marker used to plot the anatomical structures.
+        :type marker_anatomical_structures: str
+        :param marker_contour: The marker used to plot this neck node level.
+        :type marker_contour: str
+        :param marker_points: The marker used to plot `points`.
+        :type marker_points: str
+        :param slices: The z-value of the slices that are to be plotted. If not set, all slices of this neck node level
+            will be plotted.
+        :param full_screen: Whether to show the plot in fullstreen.
+        :type full_screen: bool
+        :return: This `NeckNodeLevel` instance.
+        :rtype: NeckNodeLevel
+        """
         plot_contour(self.contour,
                      path=self._path,
                      cranial_boundary=self._cranial_boundary,
@@ -856,16 +995,49 @@ class NeckNodeLevel(ABC):
         return self
 
     def save(self, path, contour_name):
+        """
+        Add this `NeckNodeLevel` instance to a DICOM file at `path`.
+
+        :param path: The path to a folder containing the RT-struct and all CT-images belonging to the CT scan.
+        :type path: str
+        :param contour_name: The label used to add this neck node level to the DICOM file.
+        :type contour_name: str
+        :return: This `NeckNodeLevel` instance.
+        :rtype: NeckNodeLevel
+        """
         add_contour(path, self.contour, contour_name)
         return self
 
     @abstractmethod
     def _initialize_contour(self):
+        """
+        Initialize the `_contour` attribute.
+        """
         pass
 
 
 class NeckNodeLevel4aLeft(NeckNodeLevel):
+    """
+    A class representing the left neck node level IVa, according to the Guidelines of Grégoire et al. (2013).
+
+    The neck node level IVa can be divided into two parts: the one located on the left and the one located on the right
+    side of the patient. This class represents the first part. The neck node level defined with respect to bordering
+    anatomical structures as described by Grégoire et al.
+    """
     def __init__(self, rt_path, ct_path):
+        """
+        Initialize an `NeckNodeLevel4aLeft` object.
+
+        For each axial slice, the neck node level is defined by its boundary , which is a closed polygonal chain.
+        Each Neck Node Level is associated with an CT-scan in DICOM format.
+
+        :param rt_path: The path to the RT-struct if the CT-scan in DICOM format that is associated with this neck node
+            level.
+        :type rt_path: str
+        :param ct_path: The path to one CT-image if the CT-scan in DICOM format that is associated with this neck node
+            level.
+        :type ct_path: str
+        """
         self._path = rt_path
         self._ct_path = ct_path
         self._cricoid = AnatomicalStructure.from_dicom(rt_path, 'KNORPEL_CRICOID')
@@ -901,10 +1073,21 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
                          self._slice_thickness, self._relevant_structures)
 
     def _get_slice_thickness(self, ct_path):
+        """
+        Retrieve the slice thickness, which is the distance between two axial slices.
+
+        :param ct_path:  The path to a single CT-image.
+        :type ct_path: str
+        :return: The slice thickness.
+        :rtype: float
+        """
         ds = dcmread(ct_path)
         return float(ds.SliceThickness)
 
     def _initialize_contour(self):
+        """
+        Initialize the `_contour` attribute.
+        """
         if not self._check_relevant_structures_exist():
             self._contour = np.empty((0, 3))
         else:
@@ -924,6 +1107,15 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
             self._contour = np.array(contour)
 
     def _get_sternocleido_points(self, z):
+        """
+        Return the points of the neck node level in the specified slice that lie on the sternocleidomastoideus
+        muscle.
+
+        :param z: The z-value of the slice.
+        :type z: float
+        :return: The points of the neck node level that lie on the sternocleidomastoideus muscle.
+        :rtype: np.ndarray
+        """
         if not self._sternocleido.has_points(z):
             return np.empty((0, 3))
 
@@ -935,6 +1127,14 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         return np.array(points)
 
     def _get_scalenus_med_points(self, z):
+        """
+        Return the points of the neck node level in the specified slice that lie on the scalene medius muscle.
+
+        :param z: The z-value of the slice.
+        :type z: float
+        :return: The points of the neck node level that lie on the scalene medius muscle.
+        :rtype: np.ndarray
+        """
         if not self._scalenus_med.has_points(z):
             return np.empty((0, 3))
 
@@ -954,6 +1154,14 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         return self._scalenus_med.get_points_between(start_point, end_point)
 
     def _get_scalenus_ant_points(self, z):
+        """
+        Return the points of the neck node level in the specified slice that lie on the scalene anterior muscle.
+
+        :param z: The z-value of the slice.
+        :type z: float
+        :return: The points of the neck node level that lie on the scalene anterior muscle.
+        :rtype: np.ndarray
+        """
         if not self._scalenus_ant.has_points(z):
             return np.empty((0, 3))
 
@@ -962,6 +1170,15 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         return self._scalenus_ant.get_points_between(start_point, end_point)
 
     def _get_carotid_points(self, z):
+        """
+
+        Return the points of the neck node level in the specified slice that lie on the common carotid artery.
+
+        :param z: The z-value of the slice.
+        :type z: float
+        :return: The points of the neck node level that lie on the common carotid artery.
+        :rtype: np.ndarray
+        """
         if not self._carotid.has_points(z):
             return np.empty((0, 3))
 
@@ -975,6 +1192,14 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         return self._carotid.get_points_between(start_point, end_point, -1)
 
     def _get_gland_thyroid_points(self, z):
+        """
+        Return the points of the neck node level in the specified slice that lie on the thyroid gland.
+
+        :param z: The z-value of the slice.
+        :type z: float
+        :return: The points of the neck node level that lie on the thyroid gland.
+        :rtype: np.ndarray
+        """
         if not self._gland_thyroid.has_points(z):
             return np.empty((0, 3))
 
@@ -988,6 +1213,14 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         return self._gland_thyroid.get_points_between(start_point, end_point)
 
     def _get_sterno_thyroid_points(self, z):
+        """
+        Return the points of the neck node level in the specified slice that lie on the sternothyroid muscle.
+
+        :param z: The z-value of the slice.
+        :type z: float
+        :return: The points of the neck node level that lie on the sternothyroid muscle.
+        :rtype: np.ndarray
+        """
         if not self._sterno_thyroid.has_points(z):
             return np.empty((0, 3))
 
@@ -1005,6 +1238,12 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
 
     @property
     def path(self):
+        """
+        Return the path to the RT-struct of the CT-scan in DICOM format that is associated with this neck node level.
+
+        :return: The RT-struct.
+        :rtype: str
+        """
         return self._path
 
 
