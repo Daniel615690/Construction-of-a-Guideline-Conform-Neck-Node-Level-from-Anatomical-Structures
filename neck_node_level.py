@@ -13,7 +13,7 @@ from interpolation import (_find_index, _slice_wrap_around, _close_contour, inte
                            interpolate_contour_in_xy, extract_structure_endpoints)
 from remove_self_intersections import clip_contour, plot_contour
 from utils import _orient_positive, get_orthogonal_in_xy, closest_to_point, closest_between_points
-from add_contour_to_dicom import add_contour
+from dicom import add_contour, extract_rt_ct_paths, get_slice_thickness
 
 
 class AnatomicalStructure:
@@ -752,15 +752,15 @@ class NeckNodeLevel(ABC):
     This class provides methods to generale an initial neck node level, process plot and the neck node level.
     """
 
-    def __init__(self, path, oar, caudal_boundary, cranial_boundary, slice_thickness, relevant_structures):
+    def __init__(self, rt_path, oar, caudal_boundary, cranial_boundary, slice_thickness, relevant_structures):
         """
         Initialize an `NeckNodeLevel` object.
 
         For each axial slice, the neck node level is defined by its boundary , which is a closed polygonal chain.
         Each Neck Node Level is associated with an CT-scan in DICOM format.
 
-        :param path: The path to the RT-struct of the DICOM file.
-        :type path: str
+        :param rt_path: The path to the RT-struct of the DICOM file.
+        :type rt_path: str
         :param oar: The labels in the DICOM file of the organs at risk. The neck node level should not cut these organs.
         :type oar: list[str]
         :param caudal_boundary: The z-value of the caudal boundary (exclusively) of this neck node level in mm.
@@ -775,7 +775,7 @@ class NeckNodeLevel(ABC):
         :return: The initialized `NeckNodeLevel` object.
         :rtype: NeckNodeLevel
         """
-        self._path = path
+        self._rt_path = rt_path
         self._oar = oar
         self._caudal_boundary = caudal_boundary
         self._cranial_boundary = cranial_boundary
@@ -840,7 +840,7 @@ class NeckNodeLevel(ABC):
         if self.contour.size == 0:
             return self
 
-        self._contour = interpolate_contour_in_z(self.contour, self._path, point_distance)
+        self._contour = interpolate_contour_in_z(self.contour, self._rt_path, point_distance)
         return self
 
     def interpolate_in_xy(self, corners=None, radius=2, num_interpolation_points=10):
@@ -882,7 +882,7 @@ class NeckNodeLevel(ABC):
         if self.contour.size == 0:
             return np.empty((0, 3))
 
-        return extract_structure_endpoints(self.contour, self._path)
+        return extract_structure_endpoints(self.contour, self._rt_path)
 
     def clip_corners(self, corners=None, radius=2, angle=np.pi / 2):
         """
@@ -980,7 +980,7 @@ class NeckNodeLevel(ABC):
         :rtype: NeckNodeLevel
         """
         plot_contour(self.contour,
-                     path=self._path,
+                     path=self._rt_path,
                      cranial_boundary=self._cranial_boundary,
                      caudal_boundary=self._caudal_boundary,
                      slice_thickness=self._slice_thickness,
@@ -1025,31 +1025,27 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
     side of the patient. This class represents the first part. The neck node level defined with respect to bordering
     anatomical structures as described by Grégoire et al.
     """
-    def __init__(self, rt_path, ct_path):
+    def __init__(self, path):
         """
         Initialize an `NeckNodeLevel4aLeft` object.
 
         For each axial slice, the neck node level is defined by its boundary , which is a closed polygonal chain.
         Each Neck Node Level is associated with an CT-scan in DICOM format.
 
-        :param rt_path: The path to the RT-struct if the CT-scan in DICOM format that is associated with this neck node
+        :param path: The path to a folder containing the CT-scan in DICOM format that is associated with this neck node
             level.
-        :type rt_path: str
-        :param ct_path: The path to one CT-image if the CT-scan in DICOM format that is associated with this neck node
-            level.
-        :type ct_path: str
+        :type path: str
         """
-        self._path = rt_path
-        self._ct_path = ct_path
-        self._cricoid = AnatomicalStructure.from_dicom(rt_path, 'KNORPEL_CRICOID')
-        self._sternum = AnatomicalStructure.from_dicom(rt_path, 'STERNUM_MANUBRIUM')
-        self._sternocleido = LeftAnatomicalStructure.from_dicom(rt_path, 'M_STERNOCLEIDOMASTOID_LINKS')
-        self._scalenus_med = LeftAnatomicalStructure.from_dicom(rt_path, 'M_SCALENUS_MEDIUS_LINKS')
-        self._scalenus_ant = LeftAnatomicalStructure.from_dicom(rt_path, 'M_SCALENUS_ANTERIOR_LINKS')
-        self._carotid = LeftAnatomicalStructure.from_dicom(rt_path, 'ARTERY_COMMONCAROTID_LINKS')
-        self._gland_thyroid = AnatomicalStructure.from_dicom(rt_path, 'GLAND_THYROID')
-        self._sterno_thyroid = LeftAnatomicalStructure.from_dicom(rt_path, 'M_STERNO_THYROID_LINKS')
-        self._trachea = AnatomicalStructure.from_dicom(rt_path, 'TRACHEA')
+        self._rt_path, self._ct_path = extract_rt_ct_paths(path)
+        self._cricoid = AnatomicalStructure.from_dicom(self._rt_path, 'KNORPEL_CRICOID')
+        self._sternum = AnatomicalStructure.from_dicom(self._rt_path, 'STERNUM_MANUBRIUM')
+        self._sternocleido = LeftAnatomicalStructure.from_dicom(self._rt_path, 'M_STERNOCLEIDOMASTOID_LINKS')
+        self._scalenus_med = LeftAnatomicalStructure.from_dicom(self._rt_path, 'M_SCALENUS_MEDIUS_LINKS')
+        self._scalenus_ant = LeftAnatomicalStructure.from_dicom(self._rt_path, 'M_SCALENUS_ANTERIOR_LINKS')
+        self._carotid = LeftAnatomicalStructure.from_dicom(self._rt_path, 'ARTERY_COMMONCAROTID_LINKS')
+        self._gland_thyroid = AnatomicalStructure.from_dicom(self._rt_path, 'GLAND_THYROID')
+        self._sterno_thyroid = LeftAnatomicalStructure.from_dicom(self._rt_path, 'M_STERNO_THYROID_LINKS')
+        self._trachea = AnatomicalStructure.from_dicom(self._rt_path, 'TRACHEA')
 
         self.oar = [self._cricoid, self._sternum, self._sternocleido, self._scalenus_med,
                     self._scalenus_ant, self._carotid, self._gland_thyroid, self._trachea]
@@ -1066,24 +1062,13 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         self._sterno_thyroid.orientation = 1
         self._trachea.orientation = 1
 
-        self._slice_thickness = self._get_slice_thickness(ct_path)
+        self._slice_thickness = get_slice_thickness(self._ct_path)
         self._cranial_boundary = self._cricoid.get_caudal_point()[2]
         self._caudal_boundary = (self._sternum.get_cranial_point()[2]
                                  + np.floor(20 / self._slice_thickness) * self._slice_thickness)
-        super().__init__(self._path, self.oar, self._caudal_boundary, self._cranial_boundary,
+        super().__init__(self._rt_path, self.oar, self._caudal_boundary, self._cranial_boundary,
                          self._slice_thickness, self._relevant_structures)
 
-    def _get_slice_thickness(self, ct_path):
-        """
-        Retrieve the slice thickness, which is the distance between two axial slices.
-
-        :param ct_path:  The path to a single CT-image.
-        :type ct_path: str
-        :return: The slice thickness.
-        :rtype: float
-        """
-        ds = dcmread(ct_path)
-        return float(ds.SliceThickness)
 
     def _initialize_contour(self):
         """
@@ -1237,27 +1222,16 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
 
         return self._sterno_thyroid.get_points_between(start_point, end_point)
 
-    @property
-    def path(self):
-        """
-        Return the path to the RT-struct of the CT-scan in DICOM format that is associated with this neck node level.
 
-        :return: The RT-struct.
-        :rtype: str
-        """
-        return self._path
-
-
-def _add_neck_node_level_4a_left_to_dicom(rt_path, ct_path, output_path, name='Level_IVa_left'):
-    """ input_path: path to rt struct, output_path: path to folder containing rt struct and ct images """
-    neck_node_level = NeckNodeLevel4aLeft(rt_path, ct_path)
+def _add_neck_node_level_4a_left_to_dicom(input_path, output_path, name='Level_IVa_left'):
+    neck_node_level = NeckNodeLevel4aLeft(input_path)
     neck_node_level.remove_self_intersections()
     neck_node_level.interpolate_in_z()
     neck_node_level.clip_corners(neck_node_level.extract_structure_endpoints())
     neck_node_level.interpolate_in_xy()
     neck_node_level.remove_intersections()
     # The following line can be uncommented to plot the neck node level before saving it.
-    # neck_node_level.plot()
+    neck_node_level.plot()
     neck_node_level.save(output_path, name)
 
 
