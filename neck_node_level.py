@@ -121,21 +121,21 @@ class AnatomicalStructure:
         return points, contour_sequences
 
     @classmethod
-    def from_dicom(cls, path, label):
+    def from_dicom(cls, rt_path, label):
         """
         Create an AnatomicalStructure instance from a DICOM RT-struct file.
 
         This method reads a DICOM RT-struct file at the specified `path` and extracts the anatomical
         structure identified by the provided `label`.
 
-        :param path: The file path to the DICOM RT-struct file.
-        :type path: str
+        :param rt_path: The file path to the DICOM RT-struct file.
+        :type rt_path: str
         :param label: The label of the anatomical structure to extract from the DICOM RT-struct file.
         :type label: str
         :return: An instance of the `AnatomicalStructure` class representing the specified structure.
         :rtype: AnatomicalStructure
         """
-        points, contour_sequences = cls._extract_points_contour_sequence_from_dicom(path, label)
+        points, contour_sequences = cls._extract_points_contour_sequence_from_dicom(rt_path, label)
         return AnatomicalStructure(points, contour_sequences)
 
     @property
@@ -618,21 +618,21 @@ class LeftAnatomicalStructure(AnatomicalStructure):
     - The z-axis extends from inferior (towards feet, -z) to superior (towards head, +z).
     """
     @classmethod
-    def from_dicom(cls, path, label):
+    def from_dicom(cls, rt_path, label):
         """
         Create a `LeftAnatomicalStructure` instance from a DICOM RT-struct file.
 
         This method initializes a new `LeftAnatomicalStructure` object based on the
         specified DICOM RT-struct file and the provided label.
 
-        :param path: The file path to the DICOM RT-struct file.
-        :type path: str
+        :param rt_path: The file path to the DICOM RT-struct file.
+        :type rt_path: str
         :param label: The label identifying the anatomical structure within the DICOM RT-struct file.
         :type label: str
         :return: A `LeftAnatomicalStructure` instance.
         :rtype: LeftAnatomicalStructure
         """
-        points, contour_sequence = cls._extract_points_contour_sequence_from_dicom(path, label)
+        points, contour_sequence = cls._extract_points_contour_sequence_from_dicom(rt_path, label)
         return LeftAnatomicalStructure(points, contour_sequence)
 
     def get_lateral_tip(self, z):
@@ -713,21 +713,21 @@ class RightAnatomicalStructure(AnatomicalStructure):
     - The z-axis extends from inferior (towards feet, -z) to superior (towards head, +z).
     """
     @classmethod
-    def from_dicom(cls, path, label):
+    def from_dicom(cls, rt_path, label):
         """
         Create a `RightAnatomicalStructure` instance from a DICOM RT-struct file.
 
         This method initializes a new `RightAnatomicalStructure` object based on the
         specified DICOM RT-struct file and the provided label.
 
-        :param path: The file path to the DICOM RT-struct file.
-        :type path: str
+        :param rt_path: The file path to the DICOM RT-struct file.
+        :type rt_path: str
         :param label: The label identifying the anatomical structure within the DICOM RT-struct file.
         :type label: str
         :return: A `RightAnatomicalStructure` instance.
         :rtype: RightAnatomicalStructure
         """
-        points, contour_sequence = cls._extract_points_contour_sequence_from_dicom(path, label)
+        points, contour_sequence = cls._extract_points_contour_sequence_from_dicom(rt_path, label)
         return RightAnatomicalStructure(points, contour_sequence)
 
     def get_lateral_tip(self, z):
