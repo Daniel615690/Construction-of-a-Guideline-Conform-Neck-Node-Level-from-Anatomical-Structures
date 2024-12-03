@@ -1280,26 +1280,6 @@ def _add_neck_node_level_4a_left_to_dicom(input_path, output_path, name='Level_I
     neck_node_level.save(output_path, name)
 
 
-def _find_paths(root):
-    paths = []
-    for dir_path, _, filenames in os.walk(root):
-        rt_path, ct_path = None, None
-        for filename in filenames:
-            if filename.startswith('RS'):
-                rt_path = os.path.join(dir_path, filename)
-            elif filename.startswith('CT'):
-                ct_path = os.path.join(dir_path, filename)
-        if rt_path is not None and ct_path is not None:
-            paths.append((dir_path, rt_path, ct_path))
-    return paths
-
-
-def add_neck_node_level_4a(root, name='Level_IVa_left'):
-    """ root: path to a folder with folders. Each folder containing one rt struct and all ct images. """
-    for dir_path, rt_path, ct_path in _find_paths(root):
-        _add_neck_node_level_4a_left_to_dicom(rt_path, ct_path, dir_path, name)
-
-
 if __name__ == '__main__':
     # example usage
     _input_path = './HN_P001_pre'
