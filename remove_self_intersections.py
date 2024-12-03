@@ -117,23 +117,6 @@ def clip_contour(contour):
     return np.array(clipped_contour)
 
 
-def get_all_labels(path):
-    """
-    Return the labels of all structures defined in the DICOM file at the specified path.
-
-    :param path: The path to the RT-struct of the DICOM file.
-    :type path: str
-    :return: The labels of all structures defined in the DICOM file.
-    :rtype: set[str]
-    """
-    ds = dcmread(path)
-
-    labels = set()
-    for structureSetROISequence, ROIContourSequence in zip(ds.StructureSetROISequence, ds.ROIContourSequence):
-        labels.add(structureSetROISequence.ROIName)
-    return labels
-
-
 def plot_contour(*contours, path, caudal_boundary, cranial_boundary, slice_thickness, points=None,
                  plot_anatomical_structures=True, anatomical_structures=None, fixed_view=False,
                  marker_anatomical_structures='o', marker_contour='x', marker_points='v', slices=None,
@@ -253,84 +236,3 @@ def plot_contour(*contours, path, caudal_boundary, cranial_boundary, slice_thick
         if grid:
             plt.grid(True, linestyle='--', alpha=0.7)
         plt.show()
-
-
-def create_circles(centres, radius, num_points):
-    return np.array([[centre[0] + radius * np.cos(phi), centre[1] + radius * np.sin(phi), centre[2]]
-                     for centre in centres
-                     for phi in np.linspace(0, 2 * np.pi, num_points)])
-
-
-def save_plot(contour_3d, path):
-    names = ['GLAND_THYROID',
-             'TRACHEA',
-             'ARTERY_COMMONCAROTID_LINKS',
-             'IJV_LINKS',
-             'M_SCALENUS_ANTERIOR_LINKS',
-             'M_SCALENUS_MEDIUS_LINKS',
-             'M_STERNOCLEIDOMASTOID_LINKS',
-             'M_STERNO_THYROID_LINKS']
-    PATH = r'C:\Users\danie\Documents\Studium\Bachelorarbeit\Dateien_von_Alexandra\Extract_Polygons\data\HN_P001_pre\RS1.2.752.243.1.1.20230309171637404.1400.85608.dcm'
-    ds = dcmread(PATH)
-
-    structures = {}
-    for structureSetROISequence, ROIContourSequence in zip(ds.StructureSetROISequence, ds.ROIContourSequence):
-        ROIName = structureSetROISequence.ROIName
-        coordinates = []
-        for contour in ROIContourSequence.ContourSequence:
-            coordinates.extend(contour.ContourData)
-        structures[ROIName] = np.array(coordinates).reshape(-1, 3)
-
-    for z in np.unique(contour_3d[:, 2]):
-        for name in names:
-            structure = structures[name]
-            plt.scatter(structure[structure[:, 2] == z][:, :2][:, 0],
-                        structure[structure[:, 2] == z][:, :2][:, 1],
-                        label=name)
-        plt.plot(contour_3d[contour_3d[:, 2] == z][:, 0], contour_3d[contour_3d[:, 2] == z][:, 1])
-        plt.scatter(contour_3d[contour_3d[:, 2] == z][:, 0], contour_3d[contour_3d[:, 2] == z][:, 1], marker='^')
-        plt.gca().invert_yaxis()
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.title(f'z = {z}')
-        plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.savefig(f'{path}_{z}.png', bbox_inches='tight')
-        plt.clf()
-
-
-def plot_polygons(polygons, z):
-    names = ['GLAND_THYROID',
-             'TRACHEA',
-             'ARTERY_COMMONCAROTID_LINKS',
-             'IJV_LINKS',
-             'M_SCALENUS_ANTERIOR_LINKS',
-             'M_SCALENUS_MEDIUS_LINKS',
-             'M_STERNOCLEIDOMASTOID_LINKS',
-             'M_STERNO_THYROID_LINKS']
-    PATH = r'C:\Users\danie\Documents\Studium\Bachelorarbeit\Dateien_von_Alexandra\Extract_Polygons\data\HN_P001_pre\RS1.2.752.243.1.1.20230309171637404.1400.85608.dcm'
-    ds = dcmread(PATH)
-
-    structures = {}
-    for structureSetROISequence, ROIContourSequence in zip(ds.StructureSetROISequence, ds.ROIContourSequence):
-        ROIName = structureSetROISequence.ROIName
-        coordinates = []
-        for contour in ROIContourSequence.ContourSequence:
-            coordinates.extend(contour.ContourData)
-        structures[ROIName] = np.array(coordinates).reshape(-1, 3)
-
-    for name in names:
-        structure = structures[name]
-        plt.scatter(structure[structure[:, 2] == z][:, :2][:, 0],
-                    structure[structure[:, 2] == z][:, :2][:, 1],
-                    label=name)
-    for polygon in polygons:
-        polygon = np.array(polygon)
-        plt.plot(polygon[polygon[:, 2] == z][:, 0], polygon[polygon[:, 2] == z][:, 1])
-    plt.gca().invert_yaxis()
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title(f'z = {z}')
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.gca().set_aspect('equal', adjustable='box')
-    plt.show()

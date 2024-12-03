@@ -84,10 +84,3 @@ def closest_between_points(points_1, points_2):
     min_points_1 = points_1[index_points_1]
     min_points_2 = points_2[index_points_2]
     return min_points_1, min_points_2, distances[index_points_2, index_points_1]
-
-
-def sort_array(array, order):
-    """ Sort a 2D array of shape (-1, 3) based on a 2D array of shape (-1, 3). Elements that do not occur in the order
-    array are filtered out. """
-    indices = np.argwhere(np.all(order[:, None] == array, axis=2))[:, 0]
-    return order[indices]
