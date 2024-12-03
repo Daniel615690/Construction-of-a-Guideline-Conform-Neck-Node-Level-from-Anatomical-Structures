@@ -5,10 +5,6 @@ import os
 from os.path import join
 import numpy as np
 
-#####
-# Written by Daniel Luckey
-#####
-
 CT_IMAGE_STORAGE_SOP_CLASS_UID = '1.2.840.10008.5.1.4.1.1.2'
 RT_STRUCTURE_SET_STORAGE_SOP_CLASS_UID = '1.2.840.10008.5.1.4.1.1.481.3'
 DICOM_EXTENSION = '.dcm'
