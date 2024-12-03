@@ -12,8 +12,8 @@ from shapely.geometry.polygon import orient
 from interpolation import (_find_index, _slice_wrap_around, _close_contour, interpolate_contour_in_z, clip_corners,
                            interpolate_contour_in_xy, extract_structure_endpoints)
 from remove_self_intersections import clip_contour, plot_contour
-from utils import _orient_positive, get_orthogonal_in_xy, closest_to_point, closest_between_points
-from dicom import add_contour, extract_rt_ct_paths, get_slice_thickness
+from utils.utils import _orient_positive, get_orthogonal_in_xy, closest_to_point, closest_between_points
+from utils.dicom import add_contour, extract_rt_ct_paths, get_slice_thickness
 
 
 class AnatomicalStructure:
@@ -1302,7 +1302,6 @@ def add_neck_node_level_4a(root, name='Level_IVa_left'):
 
 if __name__ == '__main__':
     # example usage
-    _rt_path = './HN_P001_pre/RS1.2.752.243.1.1.20230309171637404.1400.85608.dcm'
-    _ct_path = './HN_P001_pre/CT1.3.6.1.4.1.14519.5.2.1.2193.7172.982935462018887556067134421255.dcm'
+    _input_path = './HN_P001_pre'
     _output_path = './HN_P001_pre'
-    _add_neck_node_level_4a_left_to_dicom(_rt_path, _ct_path, _output_path)
+    _add_neck_node_level_4a_left_to_dicom(_input_path, _output_path)
