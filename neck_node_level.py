@@ -671,6 +671,28 @@ class LeftAnatomicalStructure(AnatomicalStructure):
         """
         return self.get_left_tip(z)
 
+    def get_lateral_point(self, z):
+        """
+        Retrieve the lateral point of this anatomical structure in the xy-plane.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The lateral point of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
+        return self.get_rightmost_point(z)
+
+    def get_medial_point(self, z):
+        """
+        Retrieve the medial point of this anatomical structure in the xy-plane.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The medial point of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
+        return self.get_leftmost_point(z)
+
 
 class RightAnatomicalStructure(AnatomicalStructure):
     """
@@ -743,6 +765,28 @@ class RightAnatomicalStructure(AnatomicalStructure):
         :rtype: np.ndarray[float]
         """
         return self.get_right_tip(z)
+
+    def get_lateral_point(self, z):
+        """
+        Retrieve the lateral point of this anatomical structure in the xy-plane.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The lateral point of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
+        return self.get_leftmost_point(z)
+
+    def get_medial_point(self, z):
+        """
+        Retrieve the medial point of this anatomical structure in the xy-plane.
+
+        :param z: The z-coordinate defining the xy-plane.
+        :type z: np.ndarray[float]
+        :return: The medial point of the anatomical structure in the xy-plane.
+        :rtype: np.ndarray[float]
+        """
+        return self.get_rightmost_point(z)
 
 
 class NeckNodeLevel(ABC):
@@ -1037,6 +1081,7 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         :type path: str
         """
         self._rt_path, self._ct_path = extract_rt_ct_paths(path)
+
         self._cricoid = AnatomicalStructure.from_dicom(self._rt_path, 'KNORPEL_CRICOID')
         self._sternum = AnatomicalStructure.from_dicom(self._rt_path, 'STERNUM_MANUBRIUM')
         self._sternocleido = LeftAnatomicalStructure.from_dicom(self._rt_path, 'M_STERNOCLEIDOMASTOID_LINKS')
