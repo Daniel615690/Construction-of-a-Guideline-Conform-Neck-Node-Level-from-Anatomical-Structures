@@ -1114,7 +1114,6 @@ class NeckNodeLevel4aLeft(NeckNodeLevel):
         super().__init__(self._rt_path, self.oar, self._caudal_boundary, self._cranial_boundary,
                          self._slice_thickness, self._relevant_structures)
 
-
     def _initialize_contour(self):
         """
         Initialize the `_contour` attribute.
