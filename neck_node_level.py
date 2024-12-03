@@ -1,7 +1,6 @@
 import typing
 
 from abc import ABC, abstractmethod
-import os
 from pydicom import dcmread
 import numpy as np
 from sklearn.decomposition import PCA
@@ -11,7 +10,8 @@ from shapely.geometry.polygon import orient
 
 from interpolation import (_find_index, _slice_wrap_around, _close_contour, interpolate_contour_in_z, clip_corners,
                            interpolate_contour_in_xy, extract_structure_endpoints)
-from remove_self_intersections import clip_contour, plot_contour
+from remove_self_intersections import clip_contour
+from utils.plot import plot_contour
 from utils.utils import _orient_positive, get_orthogonal_in_xy, closest_to_point, closest_between_points
 from utils.dicom import add_contour, extract_rt_ct_paths, get_slice_thickness
 
