@@ -38,7 +38,7 @@ neck_node_level.remove_intersections()
 neck_node_level.plot()
 
 # Save the neck node level to a DICOM file
-neck_node_level.save(output_path)
+neck_node_level.save(output_path, 'Level_IVa_left')
 ```
 
 ## Future work
